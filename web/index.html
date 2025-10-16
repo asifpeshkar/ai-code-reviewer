@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI-Assisted Code Reviewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .panel { background: rgba(255,255,255,0.9); backdrop-filter: saturate(140%) blur(6px); }
+      @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
+      .animate-fadeIn { animation: fadeIn 260ms ease-out; }
+      .spinner { width: 1rem; height: 1rem; border: 2px solid rgba(255,255,255,0.6); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+      /* lightweight keyword tint inside beautified code */
+      .kw { color: rgb(147 197 253); font-weight: 600; }
+      .kw-sql { color: rgb(129 140 248); font-weight: 600; }
+      .lit { color: rgb(52 211 153); }
+      .cmt { color: rgb(148 163 184); font-style: italic; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-800 text-slate-100">
+    <header class="relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/10 via-fuchsia-600/10 to-cyan-500/10"></div>
+      <div class="max-w-7xl mx-auto px-6 py-10 relative">
+        <div class="text-center">
+          <h1 class="text-3xl md:text-5xl font-semibold tracking-tight inline-block relative">
+            <span class="relative z-10">AI-Assisted Code Reviewer</span>
+            <span class="absolute left-0 right-0 -bottom-1 h-[3px] bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-cyan-400 rounded-full animate-pulse"></span>
+          </h1>
+          <p class="text-slate-300 mt-3 max-w-2xl mx-auto">Analyze code, detect issues, and enhance readability with AI.</p>
+          <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/60 px-3 py-1 text-xs text-slate-300">
+            Built by <span class="text-slate-100 font-medium">Asif Peshkar</span> @ <span class="text-slate-100 font-medium">Nexum Software</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 pb-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        <!-- Left: Input Panel -->
+        <section class="panel rounded-xl p-5 shadow-lg transition hover:shadow-xl hover:-translate-y-0.5 h-full flex flex-col">
+          <h2 class="text-lg font-medium text-slate-900">Enter Code Snippet</h2>
+          <textarea id="codeInput" class="mt-3 w-full h-80 md:h-[28rem] rounded-lg border border-slate-300 bg-white/70 p-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1" placeholder="Paste your code here..."></textarea>
+          <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <button id="analyzeBtn" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-white font-medium shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform active:scale-[0.98]">
+              Analyze Code
+            </button>
+            <button id="useSampleSqlBtn" class="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-slate-800 font-medium shadow-sm hover:bg-slate-300 focus:outline-none transition">Use Sample SQL</button>
+            <button id="useSampleCsBtn" class="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-slate-800 font-medium shadow-sm hover:bg-slate-300 focus:outline-none transition">Use Sample C#</button>
+            <button id="resetBtn" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-slate-700 font-medium hover:bg-slate-100 focus:outline-none transition">Reset</button>
+            <span id="loadingWrap" class="hidden items-center gap-2 text-indigo-100">
+              <span class="spinner"></span>
+              <span class="text-sm bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent">Analyzing your code...</span>
+            </span>
+          </div>
+          <p id="statusText" class="mt-3 text-sm text-slate-600 text-center"></p>
+        </section>
+
+        <!-- Right: Output Panel -->
+        <section class="panel rounded-xl p-5 shadow-lg transition hover:shadow-xl hover:-translate-y-0.5 h-full relative">
+          <!-- Center overlay spinner during analysis -->
+          <div id="overlaySpinner" class="hidden absolute inset-0 z-10 grid place-items-center bg-slate-900/30 backdrop-blur-sm">
+            <div class="flex flex-col items-center gap-3">
+              <div class="spinner" style="width:1.5rem;height:1.5rem;border-width:3px"></div>
+              <div class="text-sm bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent">Analyzing your code…</div>
+            </div>
+          </div>
+          <h2 class="text-lg font-medium text-slate-900">Analysis Result</h2>
+
+          <div class="mt-4">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Summary</h3>
+            <p id="summary" class="mt-1 text-slate-900">—</p>
+          </div>
+
+          <div class="mt-4">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Language</h3>
+            <p id="language" class="mt-1 text-slate-900">—</p>
+          </div>
+
+          <div class="mt-4">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Issues Found</h3>
+            <ul id="issues" class="mt-2 space-y-3"></ul>
+          </div>
+
+          <div class="mt-4">
+            <details id="beautyWrap" class="group transition">
+              <summary class="cursor-pointer select-none text-sm font-semibold uppercase tracking-wide text-slate-500 group-open:text-slate-700 flex items-center justify-between">
+                <span>Beautified Code (optional)</span>
+                <button id="copyBtn" type="button" class="hidden group-open:inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:bg-slate-800 transition">
+                  Copy
+                </button>
+              </summary>
+              <pre id="beautyPre" class="mt-2 overflow-auto rounded-lg bg-[#0b1220] text-slate-100 p-4 text-sm animate-fadeIn shadow-inner"><code id="beautifiedCode"></code></pre>
+            </details>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="py-8 border-t border-slate-700">
+      <div class="max-w-7xl mx-auto px-6 text-center text-slate-400 text-sm space-y-1">
+        <div>Built with .NET 8 and AI-Powered Development Tools.</div>
+        <div class="text-slate-500">Presented as part of the Banyan AI Coding Program – Capstone Project.</div>
+      </div>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+  const statusText = $('statusText');
+      const codeInput = $('codeInput');
+      const analyzeBtn = $('analyzeBtn');
+  const loadingWrap = $('loadingWrap');
+      const summaryEl = $('summary');
+      const languageEl = $('language');
+  const issuesEl = $('issues');
+  const beautifiedEl = $('beautifiedCode');
+  const beautyPre = $('beautyPre');
+  const copyBtn = $('copyBtn');
+  const overlaySpinner = $('overlaySpinner');
+  const useSampleSqlBtn = $('useSampleSqlBtn');
+  const useSampleCsBtn = $('useSampleCsBtn');
+  const resetBtn = $('resetBtn');
+  let beautifiedOriginal = '';
+
+      function severityBadgeClasses(sev) {
+        const s = (sev||'info').toLowerCase();
+        if (s === 'error') return {bg:'bg-red-600', text:'text-white', icon:'❌'};
+        if (s === 'warning') return {bg:'bg-amber-300', text:'text-black', icon:'⚠️'};
+        return {bg:'bg-blue-600', text:'text-white', icon:'ℹ️'}; // info
+      }
+
+      function highlightBeautified(text, language) {
+        // Escape HTML and then temporarily stash strings/comments so keyword highlighting doesn't break tags
+        let html = escapeHtml(text);
+        const placeholders = [];
+        const STASH = (content) => {
+          const idx = placeholders.push(content) - 1;
+          return `@@PLH${idx}@@`;
+        };
+
+        // Stash double-quoted and single-quoted strings (one line)
+        html = html.replace(/\"[^\"\n]*\"/g, (m) => STASH(`<span class="lit">${m}</span>`));
+        html = html.replace(/'[^'\n]*'/g, (m) => STASH(`<span class="lit">${m}</span>`));
+        // Stash comments: C#/C++ style // and SQL -- comments (to end of line)
+        html = html.replace(/(^|\n)\s*\/\/.*(?=\n|$)/g, (m) => STASH(`<span class="cmt">${m}</span>`));
+        html = html.replace(/(^|\n)\s*--.*(?=\n|$)/g, (m) => STASH(`<span class="cmt">${m}</span>`));
+
+        // Keyword highlighting on remaining text only
+        if ((language||'').toLowerCase() === 'sql') {
+          const kws = ['SELECT','INSERT','UPDATE','DELETE','CREATE','FROM','WHERE','JOIN','BEGIN','END','AS','INTO','VALUES'];
+          kws.forEach(k=>{
+            const re = new RegExp(`\\b${k}\\b`, 'gi');
+            html = html.replace(re, m=>`<span class="kw-sql">${m.toUpperCase()}</span>`);
+          });
+        } else { // C#/VB approx
+          const kws = ['public','private','protected','internal','class','struct','void','static','async','return','if','else','for','foreach','while','switch','case','break','continue','try','catch','finally','sub','function','end'];
+          kws.forEach(k=>{
+            const re = new RegExp(`\\b${k}\\b`, 'gi');
+            html = html.replace(re, m=>`<span class="kw">${m}</span>`);
+          });
+        }
+
+        // Restore placeholders
+        html = html.replace(/@@PLH(\d+)@@/g, (full, idx) => placeholders[+idx] || full);
+        return html;
+      }
+
+      function escapeHtml(s){
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      function renderResult(res) {
+        summaryEl.textContent = res.summary || 'No summary available.';
+        languageEl.textContent = res.language || 'Unknown';
+        issuesEl.innerHTML = '';
+
+        if (Array.isArray(res.issues) && res.issues.length) {
+          res.issues.forEach((it, idx) => {
+            const li = document.createElement('li');
+            const sev = severityBadgeClasses(it.severity);
+            const line = (it.lineNumber != null) ? ` (Line ${it.lineNumber})` : '';
+            const type = it.type || 'UnknownRule';
+            const msg = it.message || '';
+            const sug = it.suggestion || '';
+            li.className = `relative animate-fadeIn rounded-lg ${sev.bg} ${sev.text} shadow-md p-3 transition`;
+            li.innerHTML = `
+              <div class="absolute top-2 right-2 rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wide">${(it.severity||'Info')}</div>
+              <div class="flex items-start gap-3">
+                <div class="text-xl leading-none">${sev.icon}</div>
+                <div class="flex-1">
+                  <div class="font-bold">[${type}]${line}</div>
+                  <div class="text-sm mt-0.5">${msg}</div>
+                  <div class="text-sm italic opacity-90 mt-0.5">${sug}</div>
+                </div>
+              </div>`;
+            issuesEl.appendChild(li);
+          });
+        } else {
+          const li = document.createElement('li');
+          li.className = 'text-slate-600';
+          li.textContent = 'No issues detected.';
+          issuesEl.appendChild(li);
+        }
+
+        beautifiedOriginal = res.beautifiedCode || '';
+        beautifiedEl.innerHTML = highlightBeautified(beautifiedOriginal, res.language||'');
+        beautyPre.classList.add('animate-fadeIn');
+      }
+
+      function sampleFallback(input) {
+        // Simple demo result if backend is not available
+        return {
+          summary: 'Processes application logic.',
+          language: 'CSharp',
+          issues: [
+            { type: 'Smell.DeepNesting', lineNumber: 8, message: "Too many nested 'if' blocks", suggestion: 'Refactor using early returns.', severity: 'Warning' },
+            { type: 'Naming.NonDescriptive', lineNumber: 3, message: "Function 'abc' unclear", suggestion: "Rename to 'CalculateLoanInterest'", severity: 'Info' }
+          ],
+          beautifiedCode: input
+        };
+      }
+
+      async function analyze() {
+        const code = (codeInput.value || '').trim();
+        if (!code) {
+          statusText.textContent = 'Please paste some code to analyze.';
+          statusText.className = 'mt-3 text-sm text-red-600';
+          return;
+        }
+  statusText.textContent = '';
+        statusText.className = 'mt-3 text-sm text-slate-600';
+        loadingWrap.classList.remove('hidden');
+        loadingWrap.classList.add('flex');
+  overlaySpinner.classList.remove('hidden');
+        analyzeBtn.disabled = true;
+
+        try {
+          const resp = await fetch('/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          });
+
+          if (!resp.ok) {
+            throw new Error('Server responded with ' + resp.status);
+          }
+          const data = await resp.json();
+          renderResult({
+            summary: data.summary,
+            language: data.language,
+            issues: data.issues,
+            beautifiedCode: data.beautifiedCode
+          });
+          statusText.textContent = 'Analysis complete.';
+          statusText.className = 'mt-3 text-sm text-green-400 animate-fadeIn';
+        } catch (err) {
+          console.warn('Falling back to sample output:', err);
+          renderResult(sampleFallback(code));
+          statusText.textContent = 'Backend not available; showing sample output.';
+          statusText.className = 'mt-3 text-sm text-yellow-500';
+        } finally {
+          loadingWrap.classList.add('hidden');
+          loadingWrap.classList.remove('flex');
+          overlaySpinner.classList.add('hidden');
+          analyzeBtn.disabled = false;
+        }
+      }
+
+      analyzeBtn.addEventListener('click', analyze);
+
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(beautifiedOriginal);
+          statusText.textContent = 'Beautified code copied.';
+          statusText.className = 'mt-3 text-sm text-emerald-400';
+        } catch (e) {
+          statusText.textContent = 'Copy failed.';
+          statusText.className = 'mt-3 text-sm text-red-500';
+        }
+      });
+
+      useSampleSqlBtn.addEventListener('click', () => {
+        codeInput.value = `SELECT * FROM aps_case;\nDELETE FROM aps_case;\nUPDATE aps_case SET name = 'John';\nSELECT name FROM aps_case WITH (NOLOCK);`;
+      });
+      useSampleCsBtn.addEventListener('click', () => {
+        codeInput.value = `public class LoanCalculator {\n    public void Process(int principal, int rate, int term) {\n        if (true) { if (true) { if (true) { if (true) { } } } }\n    }\n    public void ManyParams(int a, int b, int c, int d, int e, int f) { }\n}`;
+      });
+      resetBtn.addEventListener('click', () => {
+        codeInput.value = '';
+        summaryEl.textContent = '—';
+        languageEl.textContent = '—';
+        issuesEl.innerHTML = '';
+        beautifiedOriginal = '';
+        beautifiedEl.textContent = '';
+        statusText.textContent = '';
+      });
+    </script>
+  </body>
+  </html>
