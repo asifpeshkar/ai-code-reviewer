@@ -3,6 +3,7 @@ services:
     name: ai-code-reviewer
     runtime: docker
     dockerfilePath: ./Dockerfile
+    dockerCommand: ["dotnet", "AICodeReviewer.dll", "--server"]
     autoDeploy: true
     healthCheckPath: /
     # Render sets PORT automatically; the app binds via ASPNETCORE_URLS/PORT inside Program.cs
