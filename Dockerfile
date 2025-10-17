@@ -1,17 +1,20 @@
-# Use official .NET 8 SDK image to build the app
+# --- Stage 1: Build the application ---
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-# Copy everything and build
+# Copy everything and build the app
 COPY . .
-RUN dotnet publish -c Release -o out
+RUN dotnet restore "./AI_CodeReviewer.csproj"
+RUN dotnet publish "./AI_CodeReviewer.csproj" -c Release -o /out
 
-# Use lightweight .NET runtime for final image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# --- Stage 2: Run the application ---
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/out .
 
-# Bind to Render’s dynamic port
+# Copy build output from previous stage
+COPY --from=build /out .
+
+# Tell Render which port to use dynamically
 ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT}
 EXPOSE 10000
 
