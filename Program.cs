@@ -133,7 +133,19 @@ static async Task RunServerAsync()
 		});
 	});
 
-	await app.RunAsync("http://localhost:5080");
+	// Determine the URL to bind to. Prefer ASPNETCORE_URLS or PORT for PaaS environments like Render.
+	var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+	if (string.IsNullOrWhiteSpace(urls))
+	{
+		var port = Environment.GetEnvironmentVariable("PORT");
+		if (!string.IsNullOrWhiteSpace(port))
+		{
+			urls = $"http://0.0.0.0:{port}";
+		}
+	}
+
+	urls ??= "http://localhost:5080";
+	await app.RunAsync(urls);
 
 	static string tryExtractCode(string json)
 	{

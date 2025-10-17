@@ -4,8 +4,8 @@ WORKDIR /app
 
 # Copy everything and build the app
 COPY . .
-RUN dotnet restore "./AI_CodeReviewer.csproj"
-RUN dotnet publish "./AI_CodeReviewer.csproj" -c Release -o /out
+RUN dotnet restore "./AICodeReviewer.csproj"
+RUN dotnet publish "./AICodeReviewer.csproj" -c Release -o /out
 
 # --- Stage 2: Run the application ---
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
@@ -14,9 +14,8 @@ WORKDIR /app
 # Copy build output from previous stage
 COPY --from=build /out .
 
-# Tell Render which port to use dynamically
-ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT}
+# Optionally expose a port (Render sets PORT dynamically; EXPOSE is informational)
 EXPOSE 10000
 
-# Run the app
-ENTRYPOINT ["dotnet", "AI_CodeReviewer.dll"]
+# Run the app in server mode
+ENTRYPOINT ["dotnet", "AICodeReviewer.dll", "--server"]
