@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-code-reviewer
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /
+    # Render sets PORT automatically; the app binds via ASPNETCORE_URLS/PORT inside Program.cs
+    envVars:
+      - key: DOTNET_ENVIRONMENT
+        value: Production
